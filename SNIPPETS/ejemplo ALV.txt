@@ -1,0 +1,79 @@
+**********************************************************************
+* Creación de una ALV mediante la clase cl_salv_table.
+* el ALV mostrará un listado con el nombre de usuario y el número
+**********************************************************************
+TYPES: BEGIN OF ty_usuario,
+         bname      TYPE xubname,    " nombre de usuario
+         persnumber TYPE ad_persnum, " Número de persona
+       END   OF ty_usuario.
+
+DATA: i_usuarios TYPE STANDARD TABLE OF ty_usuario,
+      e_usuarios TYPE ty_usuario.
+
+
+PERFORM f_get_users TABLES i_usuarios.
+
+PERFORM f_run_alv.
+
+
+FORM f_get_users TABLES pt_users STRUCTURE e_usuarios.
+  REFRESH pt_users.
+
+  SELECT bname,
+         persnumber
+    FROM usr21 INTO TABLE @pt_users.
+
+  IF sy-subrc EQ 0.
+    SORT pt_users BY bname.
+  ELSE.
+    REFRESH pt_users.
+  ENDIF.
+ENDFORM.
+
+FORM f_run_alv.
+
+  CONSTANTS: lc_cabecera TYPE text70 VALUE 'Report'.
+
+  DATA: lr_table     TYPE REF TO cl_salv_table,
+        lr_functions TYPE REF TO cl_salv_functions,
+        lr_display   TYPE REF TO cl_salv_display_settings, """""
+        lr_columns   TYPE REF TO cl_salv_columns_table, """""
+        lr_column    TYPE REF TO cl_salv_column_table, """""
+        ld_col_s     TYPE scrtext_s,
+        lx_msg       TYPE REF TO cx_salv_msg.
+
+
+
+  TRY.
+      cl_salv_table=>factory( IMPORTING r_salv_table = lr_table
+                               CHANGING t_table      = i_usuarios
+                             ).
+    CATCH cx_salv_msg INTO lx_msg.
+
+  ENDTRY.
+
+  lr_functions = lr_table->get_functions( ). """"""
+
+  lr_functions->set_all( abap_true ).
+
+  lr_display   = lr_table->get_display_settings( ). """""
+  lr_display->set_striped_pattern( cl_salv_display_settings=>true ). """""
+  lr_display->set_list_header( lc_cabecera ). """""
+
+*  TRY. Configurar el fieldcat de forma manual
+*      lr_columns = lr_table->get_columns( ). """"""
+*      lr_columns->set_optimize( abap_true ).
+**
+*      ld_col_s = text-003. "
+*
+*      lr_column  ?= lr_columns->get_column( 'VC' ). """""
+*
+*      lr_column->set_long_text( text-002 ). """""
+*      lr_column->set_medium_text( text-003 ). """""
+*      lr_column->set_short_text( ld_col_s ). """""
+*    CATCH cx_salv_not_found.                            "#EC NO_HANDLER
+*  ENDTRY.
+
+  lr_table->display( ).
+
+ENDFORM.
